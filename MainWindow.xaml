@@ -1,0 +1,1015 @@
+<Window x:Class="MyKey.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MYKEY" Height="820" Width="1260"
+        MinHeight="680" MinWidth="1020"
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/MYKEY;component/Assets/Icons/mykey-key.ico"
+        FontFamily="{StaticResource AppFont}"
+        Background="{DynamicResource Canvas}">
+    <Window.Resources>
+
+        <Geometry x:Key="EditIcon">M17,3 C17.8,2.2 19.2,2.2 20,3 C20.8,3.8 20.8,5.2 20,6 L7.5,18.5 L2,20 L3.5,14.5 Z</Geometry>
+        <Geometry x:Key="TrashIcon">M3,6 L21,6 M8,6 L8,4 C8,3 9,2 10,2 L14,2 C15,2 16,3 16,4 L16,6 M19,6 L19,20 C19,21 18,22 17,22 L7,22 C6,22 5,21 5,20 L5,6</Geometry>
+        <Geometry x:Key="ClipboardIcon">M16,4 L18,4 C19,4 20,5 20,6 L20,20 C20,21 19,22 18,22 L6,22 C5,22 4,21 4,20 L4,6 C4,5 5,4 6,4 L8,4 M8,2 L16,2 L16,6 L8,6 Z</Geometry>
+        <Geometry x:Key="NoteIcon">M14,2 L6,2 C5,2 4,3 4,4 L4,20 C4,21 5,22 6,22 L18,22 C19,22 20,21 20,20 L20,8 Z M14,2 L14,8 L20,8 M8,13 L16,13 M8,17 L16,17</Geometry>
+        <Geometry x:Key="GearIcon">M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M19.4,15 C19.6,15.4 19.8,15.8 20,16.2 L18.1,19.5 L15.7,18.5 C15.3,18.7 14.9,18.9 14.4,19 L14,21.6 L10,21.6 L9.6,19 C9.1,18.9 8.7,18.7 8.3,18.5 L5.9,19.5 L4,16.2 C4.2,15.8 4.4,15.4 4.6,15 C4.3,14.6 4.1,14.2 4,13.8 L1.6,12 L4,10.2 C4.1,9.8 4.3,9.4 4.6,9 C4.4,8.6 4.2,8.2 4,7.8 L5.9,4.5 L8.3,5.5 C8.7,5.3 9.1,5.1 9.6,5 L10,2.4 L14,2.4 L14.4,5 C14.9,5.1 15.3,5.3 15.7,5.5 L18.1,4.5 L20,7.8 C19.8,8.2 19.6,8.6 19.4,9 C19.7,9.4 19.9,9.8 20,10.2 L22.4,12 L20,13.8 C19.9,14.2 19.7,14.6 19.4,15 Z</Geometry>
+        <Geometry x:Key="PinIcon">M8,3 L16,3 L15,5 L15,11 L18,15 L6,15 L9,11 L9,5 Z M12,15 L12,22</Geometry>
+        <Geometry x:Key="GripIcon">M8,4 L8,5 M16,4 L16,5 M8,11 L8,12 M16,11 L16,12 M8,18 L8,19 M16,18 L16,19</Geometry>
+
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Primary}"/>
+            <Setter Property="Foreground" Value="{DynamicResource OnPrimary}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="{DynamicResource Subtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+        </Style>
+
+        <Style x:Key="SettingsCategoryButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SwitchToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <Border x:Name="Track" CornerRadius="13" Background="{DynamicResource SoftBorder}"/>
+                            <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="{DynamicResource Panel}" HorizontalAlignment="Left" Margin="3,0,0,0">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.18"/>
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{DynamicResource Primary}"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="MinWidth" Value="24"/>
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Subtle}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SidebarIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Background" Value="{DynamicResource Subtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="Padding" Value="9"/>
+            <Setter Property="MinWidth" Value="38"/>
+            <Setter Property="MinHeight" Value="38"/>
+        </Style>
+
+        <Style x:Key="DangerIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Danger}"/>
+                    <Setter Property="Background" Value="{DynamicResource DangerSurface}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="PinIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+                    <Setter Property="Background" Value="{DynamicResource Subtle}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SmallCopyButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="MinWidth" Value="28"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="ToolTip" Value="复制"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <Grid Width="16" Height="16">
+                                <Rectangle Width="10"
+                                           Height="10"
+                                           RadiusX="1.6"
+                                           RadiusY="1.6"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Top"
+                                           Margin="2,2,0,0"
+                                           Fill="Transparent"
+                                           Stroke="{TemplateBinding Foreground}"
+                                           StrokeThickness="1.6"/>
+                                <Rectangle Width="10"
+                                           Height="10"
+                                           RadiusX="1.6"
+                                           RadiusY="1.6"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,2,2"
+                                           Fill="{DynamicResource Panel}"
+                                           Stroke="{TemplateBinding Foreground}"
+                                           StrokeThickness="1.6"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Subtle}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CopyTagButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Subtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Primary}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="7,3"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Subtle}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource Panel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SoftBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,16,16"/>
+        </Style>
+
+        <DataTemplate x:Key="ModelTagTemplate">
+            <Button Style="{StaticResource CopyTagButton}" Tag="{Binding Name}" Click="CopyTextButton_Click" ToolTip="复制模型名">
+                <StackPanel Orientation="Horizontal">
+                    <Border Background="{DynamicResource Primary}" CornerRadius="3" Padding="5,1" Margin="0,0,5,0" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DefaultBadge}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding DefaultBadge}" Foreground="{DynamicResource OnPrimary}" FontSize="11"/>
+                    </Border>
+                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Ink}" FontSize="12"/>
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="InlineModelTagTemplate">
+            <Button Style="{StaticResource CopyTagButton}"
+                    Tag="{Binding Name}"
+                    Click="CopyTextButton_Click"
+                    ToolTip="复制模型名"
+                    Height="26"
+                    Margin="0"
+                    Padding="7,3">
+                <StackPanel Orientation="Horizontal">
+                    <Border Background="{DynamicResource Primary}" CornerRadius="3" Padding="5,1" Margin="0,0,5,0" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DefaultBadge}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding DefaultBadge}" Foreground="{DynamicResource OnPrimary}" FontSize="11"/>
+                    </Border>
+                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Ink}" FontSize="12"/>
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
+        <Style x:Key="ModelMoreButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Subtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="9,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Subtle}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WebsiteLinkButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,4,12,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock x:Name="LinkText"
+                                   Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource Primary}"/>
+                                <Setter TargetName="LinkText" Property="TextDecorations" Value="Underline"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="StringCopyTagTemplate">
+            <Button Style="{StaticResource CopyTagButton}" Content="{Binding}" Tag="{Binding}" Click="CopyTextButton_Click" ToolTip="复制"/>
+        </DataTemplate>
+        <DataTemplate x:Key="TagTemplate">
+            <Button Content="{Binding}" Tag="{Binding}" Click="TagChip_Click" Style="{StaticResource GhostButton}" Padding="7,2" FontSize="11" Margin="0,5,5,0"/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AltUrlTemplate">
+            <Grid Margin="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="42"/>
+                    <ColumnDefinition Width="112"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Border Background="{DynamicResource Primary}" CornerRadius="3" Padding="5,1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DefaultBadge}" Value="">
+                                    <Setter Property="Visibility" Value="Hidden"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding DefaultBadge}" Foreground="{DynamicResource OnPrimary}" FontSize="11"/>
+                </Border>
+                <TextBlock Grid.Column="1" Text="{Binding KindLabel}" Foreground="{DynamicResource Muted}" FontSize="13" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Url}" Foreground="{DynamicResource Ink}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                <Button Grid.Column="3" Style="{StaticResource SmallCopyButton}" Content="复制" Tag="{Binding Url}" Click="CopyTextButton_Click" MinHeight="20" MinWidth="24" Padding="2,0" Margin="6,0,0,0"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AccountTabTemplate">
+            <Button Tag="{Binding}"
+                    Click="AccountTabButton_Click"
+                    Background="{Binding Background}"
+                    Foreground="{Binding Foreground}"
+                    BorderThickness="0"
+                    Padding="11,5"
+                    Margin="0,0,6,6"
+                    Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+                <TextBlock Text="{Binding Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" FontSize="12.5"/>
+            </Button>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="228"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{DynamicResource Sidebar}" BorderBrush="{DynamicResource SoftBorder}" BorderThickness="0,0,1,0">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="MYKEY" FontSize="26" FontWeight="SemiBold" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="本机密钥与账号库" Margin="0,4,0,0" Foreground="{DynamicResource Muted}" FontSize="12"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Margin="0,34,0,0">
+                    <Button x:Name="ApiNavButton" Style="{StaticResource NavButton}" Click="ApiNavButton_Click" Content="API 管理"/>
+                    <Button x:Name="AccountNavButton" Style="{StaticResource NavButton}" Click="AccountNavButton_Click" Margin="0,6,0,0" Content="账号管理"/>
+                    <Button x:Name="TrashNavButton" Style="{StaticResource NavButton}" Click="TrashNavButton_Click" Margin="0,6,0,0" Content="回收站"/>
+                </StackPanel>
+
+                <Button x:Name="SettingsButton"
+                        Grid.Row="3"
+                        Style="{StaticResource SidebarIconButton}"
+                        HorizontalAlignment="Right"
+                        ToolTip="设置"
+                        Click="SettingsButton_Click">
+                    <Path Data="{StaticResource GearIcon}"
+                          Width="18"
+                          Height="18"
+                          Stretch="Uniform"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          StrokeThickness="1.8"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round"
+                          Fill="Transparent"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="PageTitleText"
+                           Text="API 管理"
+                           FontSize="30"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource Ink}"
+                           VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="AddButton" Style="{StaticResource PrimaryButton}" Content="新增 API" Click="AddButton_Click"/>
+                    <Button Style="{StaticResource GhostButton}" Content="刷新" Click="RefreshButton_Click" Margin="8,0,12,0"/>
+                    <Border Width="320" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource SoftBorder}" BorderThickness="1" CornerRadius="8" Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="搜索" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="SearchBox"
+                                     Grid.Column="1"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     FontSize="14"
+                                     Foreground="{DynamicResource Ink}"
+                                     TextChanged="SearchBox_TextChanged"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <DockPanel x:Name="OrganizeBar" Grid.Row="1" Margin="0,16,16,0" LastChildFill="True">
+                <ComboBox x:Name="SortSelector" DockPanel.Dock="Right" Width="112" Height="30" SelectedIndex="0" SelectionChanged="SortSelector_SelectionChanged" ToolTip="排序方式">
+                    <ComboBoxItem Content="自定义排序"/>
+                    <ComboBoxItem Content="最新添加"/>
+                    <ComboBoxItem Content="名称排序"/>
+                </ComboBox>
+                <WrapPanel x:Name="TagFilterPanel" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            </DockPanel>
+            <ScrollViewer x:Name="CardScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,16,0,0" PanningMode="VerticalOnly">
+                <StackPanel>
+                    <TextBlock x:Name="EmptyStateText" Text="暂无匹配的卡片" Foreground="{DynamicResource Muted}" Margin="0,20" Visibility="Collapsed"/>
+                    <ItemsControl x:Name="ApiList">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" HorizontalAlignment="Stretch" AllowDrop="True" Drop="Card_Drop" DragOver="Card_DragOver">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" TextTrimming="CharacterEllipsis"/>
+                                                <Button Style="{StaticResource WebsiteLinkButton}" Content="{Binding Website}" Tag="{Binding Website}" Click="OpenWebsiteLinkButton_Click"/>
+                                                <ItemsControl ItemsSource="{Binding Tags}" ItemTemplate="{StaticResource TagTemplate}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" ToolTip="拖动排序" PreviewMouseLeftButtonDown="DragHandle_Down" PreviewMouseMove="DragHandle_Move"><Path Data="{StaticResource GripIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="14" Height="16" Stretch="Uniform"/></Button>
+                                                <Button Style="{StaticResource PinIconButton}" Tag="{Binding}" Click="PinApiButton_Click" ToolTip="{Binding PinActionLabel}" AutomationProperties.Name="{Binding PinActionLabel}">
+                                                    <Path Data="{StaticResource PinIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" Click="EditApiButton_Click" ToolTip="编辑">
+                                                    <Path Data="{StaticResource EditIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" Click="CopyApiBundleButton_Click" ToolTip="复制全部信息" Margin="2,0,0,0">
+                                                    <Grid Width="18" Height="18">
+                                                        <Path Data="{StaticResource ClipboardIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
+                                                        <TextBlock Text="ALL" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" FontSize="4.8" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                                                    </Grid>
+                                                </Button>
+                                                <Button Style="{StaticResource DangerIconButton}" Tag="{Binding}" Click="DeleteApiButton_Click" ToolTip="删除" Margin="2,0,0,0">
+                                                    <Path Data="{StaticResource TrashIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                                            <TextBlock Text="Base URL" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium"/>
+                                            <ItemsControl ItemsSource="{Binding DisplayAltUrls}" ItemTemplate="{StaticResource AltUrlTemplate}" Margin="0,4,0,0"/>
+                                        </StackPanel>
+
+                                        <Grid Grid.Row="2" Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="74"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="API Key" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding ApiKey}" Foreground="{DynamicResource Ink}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2" Style="{StaticResource SmallCopyButton}" Content="复制" Tag="{Binding ApiKey}" Click="CopyTextButton_Click" Margin="8,0,0,0"/>
+                                        </Grid>
+
+                                        <StackPanel Grid.Row="3" Margin="0,12,0,0" Visibility="{Binding ModelSectionVisibility}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="模型" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                                <Border Background="{DynamicResource Subtle}" CornerRadius="4" Padding="8,0" Height="26" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ModelCountLabel}" Foreground="{DynamicResource Ink}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ContentControl Content="{Binding DisplayDefaultModel}" ContentTemplate="{StaticResource InlineModelTagTemplate}" Margin="8,0,0,0" Height="26" VerticalAlignment="Center"/>
+                                                <Button Style="{StaticResource ModelMoreButton}" Content="查看全部模型" Tag="{Binding}" Click="ShowAllModelsButton_Click" Height="26" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="4" Margin="0,6,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl x:Name="AccountList" Visibility="Collapsed">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}" Width="455" MinHeight="300" AllowDrop="True" Drop="Card_Drop" DragOver="Card_DragOver">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding WebsiteTitle}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" TextTrimming="CharacterEllipsis"/>
+                                                <ItemsControl ItemsSource="{Binding Tags}" ItemTemplate="{StaticResource TagTemplate}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding WebsiteLinkViews}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Style="{StaticResource WebsiteLinkButton}" Content="{Binding Url}" Tag="{Binding Url}" Click="OpenWebsiteLinkButton_Click"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" ToolTip="拖动排序" PreviewMouseLeftButtonDown="DragHandle_Down" PreviewMouseMove="DragHandle_Move"><Path Data="{StaticResource GripIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="14" Height="16" Stretch="Uniform"/></Button>
+                                                <Button Style="{StaticResource PinIconButton}" Tag="{Binding}" Click="PinAccountButton_Click" ToolTip="{Binding PinActionLabel}" AutomationProperties.Name="{Binding PinActionLabel}">
+                                                    <Path Data="{StaticResource PinIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" Click="EditAccountButton_Click" ToolTip="编辑">
+                                                    <Path Data="{StaticResource EditIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding ActiveAccount}" Click="ShowSpecialNoteButton_Click" ToolTip="查看特殊备注" Visibility="{Binding ActiveAccount.NoteButtonVisibility}" Margin="2,0,0,0">
+                                                    <Path Data="{StaticResource NoteIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                                <Button Style="{StaticResource DangerIconButton}" Tag="{Binding}" Click="DeleteAccountButton_Click" ToolTip="删除整个卡片（所有账号）" Margin="2,0,0,0">
+                                                    <Path Data="{StaticResource TrashIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Tabs}" ItemTemplate="{StaticResource AccountTabTemplate}" Margin="0,14,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+
+                                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="74"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="登录账号" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding ActiveAccount.Name}" Foreground="{DynamicResource Ink}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2" Style="{StaticResource SmallCopyButton}" Content="复制" Tag="{Binding ActiveAccount.Name}" Click="CopyTextButton_Click" Margin="8,0,0,0"/>
+                                        </Grid>
+
+                                        <Grid Grid.Row="3" Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="74"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="密码" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding ActiveAccount.Password}" Foreground="{DynamicResource Ink}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2" Style="{StaticResource SmallCopyButton}" Content="复制" Tag="{Binding ActiveAccount.Password}" Click="CopyTextButton_Click" Margin="8,0,0,0"/>
+                                        </Grid>
+
+                                        <StackPanel Grid.Row="4" Margin="0,12,0,0">
+                                            <TextBlock Text="绑定信息" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium"/>
+                                            <TextBlock Text="无绑定邮箱或手机" Foreground="{DynamicResource Muted}" FontSize="13" Margin="0,6,0,0" Visibility="{Binding ActiveAccount.ContactEmptyVisibility}"/>
+                                            <Grid Margin="0,8,0,0" Visibility="{Binding ActiveAccount.EmailsVisibility}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="42"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="邮箱" Foreground="{DynamicResource Muted}" FontSize="12.5" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding ActiveAccount.Emails}" ItemTemplate="{StaticResource StringCopyTagTemplate}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                </ItemsControl>
+                                            </Grid>
+                                            <Grid Margin="0,4,0,0" Visibility="{Binding ActiveAccount.PhonesVisibility}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="42"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="手机" Foreground="{DynamicResource Muted}" FontSize="12.5" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding ActiveAccount.Phones}" ItemTemplate="{StaticResource StringCopyTagTemplate}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                </ItemsControl>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="5" Margin="0,6,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl x:Name="TrashList" Visibility="Collapsed">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Card}">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                                            <Button Content="恢复" Tag="{Binding}" Click="RestoreTrash_Click" Style="{StaticResource GhostButton}"/>
+                                            <Button Tag="{Binding}" Click="DeleteTrash_Click" Style="{StaticResource DangerIconButton}" ToolTip="永久删除" Margin="8,0,0,0"><Path Data="{StaticResource TrashIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" Width="16" Height="16" Stretch="Uniform"/></Button>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" Foreground="{DynamicResource Ink}" FontSize="17" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Description}" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Grid x:Name="SettingsOverlay"
+              Grid.ColumnSpan="2"
+              Background="{DynamicResource Overlay}"
+              Visibility="Collapsed">
+            <Border Width="760"
+                    Height="520"
+                    Background="{DynamicResource Panel}"
+                    BorderBrush="{DynamicResource SoftBorder}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.16"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Margin="22,18,16,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="设置"
+                                   Foreground="{DynamicResource Ink}"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource IconButton}"
+                                Click="CloseSettingsButton_Click"
+                                x:Name="CloseSettingsButton"
+                                ToolTip="关闭">
+                            <TextBlock Text="×" FontSize="22" Margin="4,-3,4,0"/>
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="1" Margin="20,0,20,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="148"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Margin="0,8,14,0">
+                            <Button x:Name="GeneralSettingsNavButton"
+                                    Style="{StaticResource SettingsCategoryButton}"
+                                    Content="常规"
+                                    Click="GeneralSettingsNavButton_Click"/>
+                            <Button x:Name="AppearanceSettingsNavButton"
+                                    Style="{StaticResource SettingsCategoryButton}"
+                                    Content="外观"
+                                    Margin="0,6,0,0"
+                                    Click="AppearanceSettingsNavButton_Click"/>
+                            <Button x:Name="DatabaseSettingsNavButton"
+                                    Style="{StaticResource SettingsCategoryButton}"
+                                    Content="数据库"
+                                    Margin="0,6,0,0"
+                                    Click="DatabaseSettingsNavButton_Click"/>
+                        </StackPanel>
+
+                        <Border Grid.Column="1" Background="{DynamicResource Subtle}"/>
+
+                        <Grid Grid.Column="2" Margin="24,8,0,0">
+                            <StackPanel x:Name="GeneralSettingsPanel">
+                                <TextBlock Text="常规"
+                                           Foreground="{DynamicResource Ink}"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"/>
+                                <Border BorderBrush="{DynamicResource SoftBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14"
+                                        Margin="0,16,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="启动到系统托盘"
+                                                       Foreground="{DynamicResource Ink}"
+                                                       FontSize="14"
+                                                       FontWeight="Medium"/>
+                                            <TextBlock Text="开机时自动启动 MYKEY，并直接收起到系统托盘"
+                                                       Foreground="{DynamicResource Muted}"
+                                                       FontSize="12"
+                                                       Margin="0,5,0,0"/>
+                                        </StackPanel>
+                                        <ToggleButton x:Name="SilentStartupToggle"
+                                                      Grid.Column="1"
+                                                      Style="{StaticResource SwitchToggle}"
+                                                      VerticalAlignment="Center"
+                                                      Checked="SilentStartupToggle_Changed"
+                                                      Unchecked="SilentStartupToggle_Changed"/>
+                                    </Grid>
+                                </Border>
+                                <Border BorderBrush="{DynamicResource SoftBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14"
+                                        Margin="0,10,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="关闭程序到系统托盘"
+                                                       Foreground="{DynamicResource Ink}"
+                                                       FontSize="14"
+                                                       FontWeight="Medium"/>
+                                            <TextBlock Text="点击窗口关闭按钮时隐藏窗口，程序继续在托盘运行"
+                                                       Foreground="{DynamicResource Muted}"
+                                                       FontSize="12"
+                                                       Margin="0,5,0,0"/>
+                                        </StackPanel>
+                                        <ToggleButton x:Name="CloseToTrayToggle"
+                                                      Grid.Column="1"
+                                                      Style="{StaticResource SwitchToggle}"
+                                                      VerticalAlignment="Center"
+                                                      Checked="CloseToTrayToggle_Changed"
+                                                      Unchecked="CloseToTrayToggle_Changed"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel x:Name="AppearanceSettingsPanel" Visibility="Collapsed">
+                                <TextBlock Text="外观"
+                                           Foreground="{DynamicResource Ink}"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"/>
+                                <Border BorderBrush="{DynamicResource SoftBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14"
+                                        Margin="0,16,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="字体"
+                                                   Foreground="{DynamicResource Ink}"
+                                                   FontSize="14"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="MiSans"
+                                                   Foreground="{DynamicResource Ink}"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,8,0,0"/>
+                                        <TextBlock Text="字体文件已打包进程序资源"
+                                                   Foreground="{DynamicResource Muted}"
+                                                   FontSize="12"
+                                                   Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel x:Name="DatabaseSettingsPanel" Visibility="Collapsed">
+                                <TextBlock Text="数据库"
+                                           Foreground="{DynamicResource Ink}"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"/>
+                                <Border BorderBrush="{DynamicResource SoftBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14"
+                                        Margin="0,16,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="数据库地址"
+                                                   Foreground="{DynamicResource Ink}"
+                                                   FontSize="14"
+                                                   FontWeight="Medium"/>
+                                        <Border Background="{DynamicResource Subtle}"
+                                                BorderBrush="{DynamicResource SoftBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="10"
+                                                Margin="0,9,0,0">
+                                            <TextBlock x:Name="DatabasePathText"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource Muted}"
+                                                       FontSize="12"/>
+                                        </Border>
+                                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                            <Button Style="{StaticResource GhostButton}"
+                                                    Content="导出数据库"
+                                                    Click="ExportDatabaseButton_Click"/>
+                                            <Button Style="{StaticResource PrimaryButton}"
+                                                    Content="导入数据库"
+                                                    Click="ImportDatabaseButton_Click"
+                                                    Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ModelListOverlay"
+              Grid.ColumnSpan="2"
+              Background="{DynamicResource Overlay}"
+              Visibility="Collapsed">
+            <Border Width="760"
+                    Height="520"
+                    Background="{DynamicResource Panel}"
+                    BorderBrush="{DynamicResource SoftBorder}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="ModelListTitleText"
+                                   Text="全部模型"
+                                   Foreground="{DynamicResource Ink}"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource IconButton}"
+                                Click="CloseModelListButton_Click"
+                                ToolTip="关闭">
+                            <TextBlock Text="×" FontSize="22" Margin="4,-3,4,0"/>
+                        </Button>
+                    </Grid>
+                    <Border Grid.Row="1"
+                            Background="{DynamicResource Subtle}"
+                            BorderBrush="{DynamicResource SoftBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16"
+                            Margin="0,18,0,0">
+                        <ScrollViewer x:Name="AllModelsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="AllModelsList"
+                                          Width="{Binding ViewportWidth, ElementName=AllModelsScrollViewer}"
+                                          ItemTemplate="{StaticResource ModelTagTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border x:Name="ToastHost"
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,22,0,0"
+                Background="{DynamicResource Panel}"
+                BorderBrush="{DynamicResource Subtle}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="14,9"
+                MinWidth="150"
+                MaxWidth="520"
+                Opacity="0"
+                Visibility="Collapsed"
+                IsHitTestVisible="False">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ToastTransform" Y="-18"/>
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.18"/>
+            </Border.Effect>
+            <TextBlock x:Name="ToastText"
+                       Foreground="{DynamicResource Ink}"
+                       FontSize="13"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"/>
+        </Border>
+    </Grid>
+</Window>

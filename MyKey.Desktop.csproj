@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>MYKEY</AssemblyName>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <InformationalVersion>1.1.0</InformationalVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\Icons\mykey-key.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <EmbeddedResource Include="tools\install-update.ps1" LogicalName="MyKey.Desktop.install-update.ps1" />
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="ToolGood.Words.Pinyin" Version="3.1.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\MiSans\MiSans-Regular.ttf" />
+    <Resource Include="Assets\Fonts\MiSans\MiSans-Medium.ttf" />
+    <Resource Include="Assets\Fonts\MiSans\MiSans-Semibold.ttf" />
+    <Resource Include="Assets\Fonts\MiSans\MiSans-Bold.ttf" />
+    <Resource Include="Assets\Icons\mykey-key.ico" />
+    <Resource Include="Assets\Icons\mykey-key.png" />
+    <Content Include="Assets\Fonts\MiSans\MiSans字体知识产权许可协议.pdf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+.dotnet/
+bin/
+obj/
+dist/
+Artifacts/
+data/
+*.db
+*.db-*
+*.sqlite*
+settings.json
+*.user
+*.log
+.vs/
