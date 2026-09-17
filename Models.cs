@@ -14,6 +14,9 @@ public sealed class ApiKeyRecord
     public string Website { get; init; } = "";
     public string BaseUrl { get; init; } = "";
     public string ApiKey { get; init; } = "";
+    public IReadOnlyList<ApiSecretRecord> Keys { get; init; } = [];
+    public IReadOnlyList<ApiSecretRecord> DisplayKeys => Keys.Count > 0 ? Keys : [new() { Value = ApiKey, IsDefault = true }];
+    public string EffectiveKey => DisplayKeys.FirstOrDefault(k => k.IsDefault)?.Value ?? DisplayKeys.FirstOrDefault()?.Value ?? "";
     public string DefaultUrl { get; init; } = "";
     public string DefaultModel { get; init; } = "";
     public IReadOnlyList<string> Models { get; init; } = [];
@@ -75,19 +78,39 @@ public sealed class ApiKeyRecord
         Website,
         BaseUrl,
         DefaultUrl,
-        ApiKey,
+        string.Join(' ', DisplayKeys.Select(k => $"{k.Remark} {k.Value}")),
         DefaultModel,
         string.Join(' ', DisplayAltUrls.Select(url => $"{url.Url} {url.CompatType}")),
         string.Join(' ', ModelTags));
 
     public string CopyBundle()
     {
-        var parts = new List<string> { $"Base URL: {EffectiveUrl}", $"API key: {ApiKey}" };
+        var parts = new List<string> { $"Base URL: {EffectiveUrl}", $"API key: {EffectiveKey}" };
         if (!string.IsNullOrWhiteSpace(DefaultModel))
             parts.Add($"模型: {DefaultModel}");
         return string.Join(", ", parts);
     }
 
+}
+
+public sealed class ApiSecretRecord
+{
+    public string Value { get; init; } = "";
+    public string Remark { get; init; } = "";
+    public bool IsDefault { get; init; }
+    public string Label => string.IsNullOrWhiteSpace(Remark) ? "API Key" : Remark;
+
+    public static List<ApiSecretRecord> Normalize(IEnumerable<ApiSecretRecord> keys, string legacyKey = "")
+    {
+        var result = keys.Where(k => !string.IsNullOrWhiteSpace(k.Value))
+            .Select(k => new ApiSecretRecord { Value = k.Value.Trim(), Remark = k.Remark.Trim(), IsDefault = k.IsDefault }).ToList();
+        if (result.Count == 0 && !string.IsNullOrWhiteSpace(legacyKey))
+            result.Add(new() { Value = legacyKey.Trim() });
+        if (result.Any(k => new System.Globalization.StringInfo(k.Remark).LengthInTextElements > 6))
+            throw new ArgumentException("每把 Key 的备注最多填写 6 个字。");
+        var defaultIndex = Math.Max(0, result.FindIndex(k => k.IsDefault));
+        return result.Select((k, i) => new ApiSecretRecord { Value = k.Value, Remark = k.Remark, IsDefault = i == defaultIndex }).ToList();
+    }
 }
 
 public sealed class AltUrlRecord
@@ -260,6 +283,7 @@ public sealed class AccountTabView
 
 public sealed class ApiKeyEditData
 {
+    public List<ApiSecretRecord> Keys { get; set; } = [];
     public List<string> Tags { get; set; } = [];
     public int Id { get; set; }
     public string Name { get; set; } = "";

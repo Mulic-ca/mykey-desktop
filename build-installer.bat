@@ -18,4 +18,4 @@ if errorlevel 1 exit /b 1
 
 echo.
 echo Installer created:
-echo %~dp0dist\MYKEY-Setup-1.1.0-x64.exe
+echo %~dp0dist\MYKEY-Setup-1.1.5-x64.exe

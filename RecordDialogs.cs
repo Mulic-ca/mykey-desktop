@@ -1,6 +1,3 @@
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -67,7 +64,7 @@ public static partial class RecordDialogs
         return dialog.ShowDialog() == true;
     }
 
-    private static void ShowNoticeDialog(Window owner, string message, string title)
+    public static void ShowNoticeDialog(Window owner, string message, string title)
     {
         var dialog = CreateDialog(owner, title, 360, 300);
         var panel = new StackPanel
@@ -132,6 +129,7 @@ public static partial class RecordDialogs
             Name = existing?.Name ?? "",
             Website = existing?.Website ?? "",
             ApiKey = existing?.ApiKey ?? "",
+            Keys = existing?.DisplayKeys.ToList() ?? [new() { IsDefault = true }],
             DefaultModel = existing?.DefaultModel ?? "",
             Models = existing?.Models.ToList() ?? [],
             ManualModels = existing?.ManualModels.ToList() ?? [],
@@ -144,8 +142,10 @@ public static partial class RecordDialogs
 
         var name = AddTextBox(panel, "名称 / 备注", data.Name);
         var website = AddTextBox(panel, "官网链接", data.Website);
-        var tags = AddTextBox(panel, "标签（逗号分隔）", string.Join(", ", data.Tags));
-        var apiKey = AddTextBox(panel, "API Key", data.ApiKey);
+        var tags = new TagEditor(panel, data.Tags);
+        var keyEditor = new ApiSecretEditor(panel, data.Keys);
+        using var detectionCancellation = new CancellationTokenSource();
+        dialog.Closed += (_, _) => detectionCancellation.Cancel();
 
         AddSectionTitle(panel, "Base URL");
         var urlPanel = new StackPanel();
@@ -447,7 +447,9 @@ public static partial class RecordDialogs
         {
             SyncUrlRows();
             var selectedUrl = urlRows.FirstOrDefault(r => r.IsDefault)?.Url ?? urlRows.FirstOrDefault()?.Url ?? "";
-            if (string.IsNullOrWhiteSpace(selectedUrl) || string.IsNullOrWhiteSpace(apiKey.Text))
+            var keys = keyEditor.GetValues();
+            var selectedKey = keys.FirstOrDefault(k => k.IsDefault)?.Value ?? "";
+            if (string.IsNullOrWhiteSpace(selectedUrl) || string.IsNullOrWhiteSpace(selectedKey))
             {
                 ShowNoticeDialog(dialog, "请先填写默认 Base URL 和 API Key", "无法检测");
                 return;
@@ -457,13 +459,22 @@ public static partial class RecordDialogs
             detectButton.Content = "检测中...";
             try
             {
-                data.Models = await DetectModelsAsync(selectedUrl, apiKey.Text.Trim());
+                var detected = await ModelDetectionService.DetectAsync(selectedUrl, selectedKey, detectionCancellation.Token);
+                if (!dialog.IsVisible) return;
+                SyncUrlRows();
+                if ((urlRows.FirstOrDefault(r => r.IsDefault)?.Url ?? "") != selectedUrl ||
+                    keyEditor.GetValues().FirstOrDefault(k => k.IsDefault)?.Value != selectedKey)
+                {
+                    ShowNoticeDialog(dialog, "默认地址或 Key 已更改，请重新检测模型。", "配置已更改");
+                    return;
+                }
+                data.Models = detected;
                 UpdateModelOptions(defaultModel.Text.Trim());
                 ShowNoticeDialog(dialog, $"检测到 {data.Models.Count} 个模型", "检测完成");
             }
             catch (Exception ex)
             {
-                ShowNoticeDialog(dialog, ex.Message, "模型检测失败");
+                if (dialog.IsVisible) ShowNoticeDialog(dialog, ModelDetectionService.DescribeError(ex), "模型检测失败");
             }
             finally
             {
@@ -474,7 +485,9 @@ public static partial class RecordDialogs
         AddActions(dialog, panel, () =>
         {
             SyncUrlRows();
-            if (string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(apiKey.Text))
+            if (!tags.Validate(dialog)) return false;
+            var keys = keyEditor.GetValues();
+            if (string.IsNullOrWhiteSpace(name.Text) || keys.Count == 0)
             {
                 ShowNoticeDialog(dialog, "名称和 API Key 必填", "缺少信息");
                 return false;
@@ -495,9 +508,10 @@ public static partial class RecordDialogs
             var selectedDefault = defaultModel.Text.Trim();
 
             data.Name = name.Text.Trim();
-            data.Tags = TagNames.Parse(tags.Text);
+            data.Tags = tags.GetValues();
             data.Website = website.Text.Trim();
-            data.ApiKey = apiKey.Text.Trim();
+            data.Keys = keys;
+            data.ApiKey = keys.First(k => k.IsDefault).Value;
             data.DefaultModel = selectedDefault;
             data.AltUrls = cleanedUrls;
             data.ManualModels = manualModels.Select(m => new ManualModelRecord { Name = m.Name, IsDefault = m.IsDefault }).ToList();
@@ -508,7 +522,7 @@ public static partial class RecordDialogs
         return dialog.ShowDialog() == true ? data : null;
     }
 
-    public static AccountGroupEditData? ShowAccountGroupDialog(Window owner, AccountGroupView? group)
+    public static AccountGroupEditData? ShowAccountGroupDialog(Window owner, AccountGroupView? group, ContactHistory? history = null)
     {
         var data = new AccountGroupEditData
         {
@@ -538,7 +552,7 @@ public static partial class RecordDialogs
         var website = AddTextBox(panel, "主网站", data.Website);
         var websiteSub = AddTextBox(panel, "子网站", data.WebsiteSub);
         var websiteRemark = AddTextBox(panel, "网站备注名", data.WebsiteRemark);
-        var tags = AddTextBox(panel, "标签（逗号分隔）", string.Join(", ", data.Tags));
+        var tags = new TagEditor(panel, data.Tags);
 
         AddSectionTitle(panel, "账号");
         var tabControl = new TabControl { MinHeight = 360, Margin = new Thickness(0, 0, 0, 10) };
@@ -587,7 +601,7 @@ public static partial class RecordDialogs
             for (var i = 0; i < data.Entries.Count; i++)
             {
                 var entry = data.Entries[i];
-                var controls = CreateAccountEntryEditor(entry);
+                var controls = CreateAccountEntryEditor(entry, history ?? new([], []));
                 entryControls[entry] = controls;
                 controls.Panel.Children.Insert(0, CreateAccountActions());
                 tabControl.Items.Add(new TabItem
@@ -618,7 +632,8 @@ public static partial class RecordDialogs
         AddActions(dialog, panel, () =>
         {
             SyncEntries();
-            data.Tags = TagNames.Parse(tags.Text);
+            if (!tags.Validate(dialog)) return false;
+            data.Tags = tags.GetValues();
             if (string.IsNullOrWhiteSpace(websiteRemark.Text))
             {
                 ShowNoticeDialog(dialog, "网站备注名必填", "缺少信息");
@@ -641,7 +656,7 @@ public static partial class RecordDialogs
         return dialog.ShowDialog() == true ? data : null;
     }
 
-    private static AccountEntryControls CreateAccountEntryEditor(AccountEntryEditData entry)
+    private static AccountEntryControls CreateAccountEntryEditor(AccountEntryEditData entry, ContactHistory history)
     {
         var panel = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         var remark = AddTextBox(panel, "标签名", entry.Remark);
@@ -652,15 +667,15 @@ public static partial class RecordDialogs
         noPassword.Margin = new Thickness(0, -8, 0, 12);
         noPassword.Click += (_, _) => password.Text = "暂无密码";
         panel.Children.Add(noPassword);
-        var emails = AddContactListEditor(panel, "绑定邮箱", "email@example.com", "+ 添加邮箱", entry.Emails);
-        var phones = AddContactListEditor(panel, "绑定手机", "手机号码", "+ 添加手机", entry.Phones);
+        var emails = AddContactListEditor(panel, "绑定邮箱", "email@example.com", "+ 添加邮箱", entry.Emails, history.Emails);
+        var phones = AddContactListEditor(panel, "绑定手机", "手机号码", "+ 添加手机", entry.Phones, history.Phones);
         var specialNote = AddTextBox(panel, "特殊备注（支持 Markdown 文本保存）", entry.SpecialNote, true);
         specialNote.MinHeight = 90;
 
         return new AccountEntryControls(panel, remark, name, password, emails, phones, specialNote);
     }
 
-    private static ContactListEditor AddContactListEditor(Panel panel, string label, string placeholder, string addButtonText, IEnumerable<string> values)
+    private static ContactListEditor AddContactListEditor(Panel panel, string label, string placeholder, string addButtonText, IEnumerable<string> values, IReadOnlyList<string> history)
     {
         panel.Children.Add(new TextBlock
         {
@@ -674,7 +689,7 @@ public static partial class RecordDialogs
         var rows = new StackPanel { Margin = new Thickness(0, 0, 0, 4) };
         panel.Children.Add(rows);
 
-        var editor = new ContactListEditor(rows, placeholder);
+        var editor = new ContactListEditor(rows, placeholder, history);
         foreach (var value in values.Where(v => !string.IsNullOrWhiteSpace(v)))
             editor.AddRow(value.Trim());
 
@@ -1195,70 +1210,6 @@ public static partial class RecordDialogs
         return border;
     }
 
-    private static async Task<List<string>> DetectModelsAsync(string baseUrl, string apiKey)
-    {
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-        string? lastError = null;
-        foreach (var url in BuildModelUrlCandidates(baseUrl))
-        {
-            using var response = await client.GetAsync(url);
-            var body = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
-            {
-                using var document = JsonDocument.Parse(body);
-                if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-                    return [];
-
-                return data.EnumerateArray()
-                    .Select(item => item.TryGetProperty("id", out var id) ? id.GetString() ?? "" : "")
-                    .Where(id => !string.IsNullOrWhiteSpace(id))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-            }
-
-            lastError = $"HTTP {(int)response.StatusCode}: {body[..Math.Min(body.Length, 180)]}";
-            if (response.StatusCode is not System.Net.HttpStatusCode.NotFound and not System.Net.HttpStatusCode.MethodNotAllowed)
-                break;
-        }
-
-        throw new InvalidOperationException(lastError ?? "未找到可用的模型接口。");
-    }
-
-    private static IEnumerable<string> BuildModelUrlCandidates(string baseUrl)
-    {
-        var trimmed = baseUrl.Trim().TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(trimmed))
-            yield break;
-
-        if (Regex.IsMatch(trimmed, @"/v\d+$"))
-        {
-            yield return trimmed + "/models";
-            if (!trimmed.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
-                yield return trimmed + "/v1/models";
-        }
-        else
-        {
-            yield return trimmed + "/v1/models";
-        }
-
-        var suffixes = new[] { "/api/claudecode", "/api/anthropic", "/apps/anthropic", "/api/coding", "/claudecode", "/anthropic", "/step_plan", "/coding", "/claude" };
-        foreach (var suffix in suffixes)
-        {
-            if (!trimmed.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var root = trimmed[..^suffix.Length].TrimEnd('/');
-            if (!string.IsNullOrWhiteSpace(root) && root.Contains("://", StringComparison.Ordinal))
-            {
-                yield return root + "/v1/models";
-                yield return root + "/models";
-            }
-            break;
-        }
-    }
-
     private static List<string> SplitLines(string text)
     {
         return text
@@ -1297,13 +1248,15 @@ public static partial class RecordDialogs
         public bool IsDefault { get; set; } = isDefault;
     }
 
-    private sealed class ContactListEditor(StackPanel rowsPanel, string placeholder)
+    private sealed class ContactListEditor(StackPanel rowsPanel, string placeholder, IReadOnlyList<string> history)
     {
         public TextBox AddRow(string value)
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 7) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var input = new TextBox
             {
@@ -1319,6 +1272,7 @@ public static partial class RecordDialogs
                 FontWeight = FontWeights.Normal
             };
             ApplyTextBoxStyle(input);
+            AttachContactSuggestions(row, input, history);
 
             var remove = CreateContactRemoveButton();
             remove.Margin = new Thickness(8, 0, 0, 0);

@@ -9,9 +9,9 @@ public sealed partial class MyKeyRepository
         if (!System.IO.File.Exists(DatabasePath)) return;
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM pragma_table_info('api_keys') WHERE name='deleted_at'";
-        if (Convert.ToInt32(command.ExecuteScalar()) != 0) return;
-        var path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(DatabasePath)!, "backups", $"mykey-before-1.1.0-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.db");
+        command.CommandText = "SELECT count(*) FROM pragma_table_info('api_keys') WHERE name IN ('deleted_at', 'api_secrets')";
+        if (Convert.ToInt32(command.ExecuteScalar()) == 2) return;
+        var path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(DatabasePath)!, "backups", $"mykey-before-1.1.5-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.db");
         ExportDatabase(path);
     }
     public void PurgeExpired(DateTimeOffset? now = null)
@@ -116,6 +116,12 @@ public sealed record TrashItem(string Kind, string Batch, string Title, DateTime
 
 public static class TagNames
 {
+    public static List<string> ForSave(IEnumerable<string> tags)
+    {
+        var normalized = Normalize(tags);
+        if (normalized.Count > 4) throw new ArgumentException("每张卡片最多添加 4 个标签。");
+        return normalized;
+    }
     public static List<string> Parse(string text) => Normalize(text.Split([',', '，', ';', '；', '\n'], StringSplitOptions.RemoveEmptyEntries));
     public static List<string> Normalize(IEnumerable<string> tags) => tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 }

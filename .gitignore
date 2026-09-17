@@ -11,3 +11,13 @@ settings.json
 *.user
 *.log
 .vs/
+*.pfx
+*.p12
+*.key
+
+# Local tooling, artwork sources and verification reports
+/tools/dotnet-install.ps1
+/tools/sign-local.ps1
+/docs/local-signing.md
+/docs/release-*-testing.md
+/Assets/Icons/mykey-key.png

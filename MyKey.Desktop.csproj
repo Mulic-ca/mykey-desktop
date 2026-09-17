@@ -1,13 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <AssemblyName>MYKEY</AssemblyName>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
-    <InformationalVersion>1.1.0</InformationalVersion>
+    <Version>1.1.5</Version>
+    <AssemblyVersion>1.1.5.0</AssemblyVersion>
+    <FileVersion>1.1.5.0</FileVersion>
+    <InformationalVersion>1.1.5</InformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -33,7 +33,6 @@
     <Resource Include="Assets\Fonts\MiSans\MiSans-Semibold.ttf" />
     <Resource Include="Assets\Fonts\MiSans\MiSans-Bold.ttf" />
     <Resource Include="Assets\Icons\mykey-key.ico" />
-    <Resource Include="Assets\Icons\mykey-key.png" />
     <Content Include="Assets\Fonts\MiSans\MiSans字体知识产权许可协议.pdf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

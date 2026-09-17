@@ -14,7 +14,7 @@ using System.Windows.Threading;
 using Microsoft.Data.Sqlite;
 using MyKey.Desktop;
 
-internal static class Program
+internal static partial class Program
 {
     private static int passed;
     private static void Check(bool value, string name)
@@ -32,6 +32,8 @@ internal static class Program
             if (!AppPaths.IsTestMode) throw new Exception("--test-mode and --data-dir required");
             Directory.CreateDirectory(AppPaths.DataDirectory);
             RepositoryTests();
+            DetailsRepositoryTests();
+            ModelDetectionTests().GetAwaiter().GetResult();
             UpdateTests().GetAwaiter().GetResult();
             UiTests();
             Console.WriteLine($"TOTAL {passed} passed");
@@ -167,7 +169,12 @@ internal static class Program
         app.InitializeComponent();
         ThemeManager.Apply("light");
         var repo = new MyKeyRepository();
-        foreach (var (name,tags) in new[] { ("火山引擎", new[] { "开发", "常用" }), ("示例 API", new[] { "工作" }) }) repo.SaveApiKey(Api(name,tags));
+        foreach (var (name,tags) in new[] { ("火山引擎", new[] { "开发", "常用" }), ("示例 API", new[] { "工作" }) })
+        {
+            var fixture = Api(name, tags);
+            fixture.Keys = [new() { Value = "sk-test-daily-not-real", Remark = "日常使用" }, new() { Value = "sk-test-project-not-real", Remark = "项目开发专用", IsDefault = true }];
+            repo.SaveApiKey(fixture);
+        }
         for (int i = 0; i < 30; i++) repo.SaveAccountGroup(Group("示例网站" + i, 3));
         var window = new MainWindow();
         window.Show();
@@ -201,7 +208,9 @@ internal static class Program
         Check(list.Items.Cast<AccountGroupView>().All(g => g.Accounts.Count == 1 && g.ActiveAccount.Name == "demo-2"), "account search hides nonmatching account tabs");
         search.Clear(); WaitUi(220);
         var snapshots = Path.Combine(AppPaths.DataDirectory,"screenshots"); Directory.CreateDirectory(snapshots);
+        DetailsUiTests(window, repo, snapshots);
         ((Button)window.FindName("ApiNavButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        ((ScrollViewer)window.FindName("CardScroll")).ScrollToTop();
         foreach (var theme in ThemeManager.Choices)
         {
             ThemeManager.Apply(theme.Id); Pump(); Snapshot(window,Path.Combine(snapshots,theme.Id+".png"));

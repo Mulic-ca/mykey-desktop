@@ -1,5 +1,5 @@
 #define AppName "MYKEY"
-#define AppVersion "1.1.0"
+#define AppVersion "1.1.5"
 #define AppPublisher "MYKEY"
 #define AppExeName "MYKEY.exe"
 #define ProjectRoot SourcePath + "\.."
@@ -36,7 +36,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=force
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=1.1.0.0
+VersionInfoVersion=1.1.5.0
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}

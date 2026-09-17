@@ -47,6 +47,7 @@ public sealed partial class MyKeyRepository
                 Website = ReadString(reader, "website"),
                 BaseUrl = baseUrl,
                 ApiKey = ReadString(reader, "api_key"),
+                Keys = ReadApiSecrets(ReadString(reader, "api_secrets"), ReadString(reader, "api_key")),
                 DefaultUrl = altUrls.FirstOrDefault(u => u.IsDefault)?.Url ?? defaultUrl,
                 DefaultModel = ReadString(reader, "default_model"),
                 Models = ParseStringList(ReadString(reader, "models")),
@@ -95,8 +96,11 @@ public sealed partial class MyKeyRepository
 
     public void SaveApiKey(ApiKeyEditData data)
     {
+        var tags = TagNames.ForSave(data.Tags);
         var altUrls = NormalizeAltUrls(data.AltUrls, data.DefaultUrl, data.DefaultUrl);
         var defaultUrl = altUrls.First(u => u.IsDefault).Url;
+        var keys = ApiSecretRecord.Normalize(data.Keys, data.ApiKey);
+        if (keys.Count == 0) throw new ArgumentException("至少需要一把 API Key。");
 
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
@@ -109,6 +113,7 @@ public sealed partial class MyKeyRepository
                     website = $website,
                     base_url = $default_url,
                     api_key = $api_key,
+                    api_secrets = $api_secrets,
                     models = $models,
                     default_model = $default_model,
                     alt_urls = $alt_urls,
@@ -123,16 +128,17 @@ public sealed partial class MyKeyRepository
         else
         {
             command.CommandText = """
-                INSERT INTO api_keys (name, website, base_url, api_key, models, default_model, alt_urls, default_url, manual_models, tags)
-                VALUES ($name, $website, $default_url, $api_key, $models, $default_model, $alt_urls, $default_url, $manual_models, $tags)
+                INSERT INTO api_keys (name, website, base_url, api_key, api_secrets, models, default_model, alt_urls, default_url, manual_models, tags)
+                VALUES ($name, $website, $default_url, $api_key, $api_secrets, $models, $default_model, $alt_urls, $default_url, $manual_models, $tags)
                 """;
         }
 
         command.Parameters.AddWithValue("$name", data.Name.Trim());
-        command.Parameters.AddWithValue("$tags", SerializeList(TagNames.Normalize(data.Tags)));
+        command.Parameters.AddWithValue("$tags", SerializeList(tags));
         command.Parameters.AddWithValue("$website", NullIfEmpty(data.Website));
         command.Parameters.AddWithValue("$default_url", defaultUrl);
-        command.Parameters.AddWithValue("$api_key", data.ApiKey.Trim());
+        command.Parameters.AddWithValue("$api_key", keys.First(k => k.IsDefault).Value);
+        command.Parameters.AddWithValue("$api_secrets", JsonSerializer.Serialize(keys));
         command.Parameters.AddWithValue("$models", data.Models.Count == 0 ? DBNull.Value : JsonSerializer.Serialize(data.Models));
         command.Parameters.AddWithValue("$default_model", NullIfEmpty(data.DefaultModel));
         command.Parameters.AddWithValue("$alt_urls", JsonSerializer.Serialize(altUrls.Select(u => new Dictionary<string, object?>
@@ -156,6 +162,7 @@ public sealed partial class MyKeyRepository
 
     public void SaveAccountGroup(AccountGroupEditData data)
     {
+        var tags = TagNames.ForSave(data.Tags);
         using var connection = OpenConnection();
         using var transaction = connection.BeginTransaction();
 
@@ -203,7 +210,7 @@ public sealed partial class MyKeyRepository
                 }
 
                 command.Parameters.AddWithValue("$remark", NullIfEmpty(entry.Remark));
-                command.Parameters.AddWithValue("$tags", SerializeList(TagNames.Normalize(data.Tags)));
+                command.Parameters.AddWithValue("$tags", SerializeList(tags));
                 command.Parameters.AddWithValue("$card_order", data.CardOrder);
                 command.Parameters.AddWithValue("$name", entry.Name.Trim());
                 command.Parameters.AddWithValue("$website", NullIfEmpty(data.Website));
@@ -216,6 +223,8 @@ public sealed partial class MyKeyRepository
                 command.Parameters.AddWithValue("$sort_order", index);
                 command.Parameters.AddWithValue("$is_pinned", data.IsPinned ? 1 : 0);
                 command.ExecuteNonQuery();
+                RememberContacts(connection, transaction, "email", entry.Emails);
+                RememberContacts(connection, transaction, "phone", entry.Phones);
             }
 
             transaction.Commit();
@@ -439,10 +448,17 @@ public sealed partial class MyKeyRepository
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS contact_history (
+                kind TEXT NOT NULL,
+                value TEXT NOT NULL COLLATE NOCASE,
+                last_used INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (kind, value)
+            );
             """;
         command.ExecuteNonQuery();
 
         EnsureColumn(connection, "api_keys", "alt_urls", "TEXT");
+        EnsureColumn(connection, "api_keys", "api_secrets", "TEXT");
         EnsureColumn(connection, "api_keys", "default_url", "TEXT");
         EnsureColumn(connection, "api_keys", "manual_models", "TEXT");
         EnsureColumn(connection, "api_keys", "is_pinned", "INTEGER DEFAULT 0");
@@ -459,6 +475,12 @@ public sealed partial class MyKeyRepository
             EnsureColumn(connection, table, "deleted_at", "INTEGER");
             EnsureColumn(connection, table, "delete_batch", "TEXT");
         }
+        // Seed contacts already saved before 1.1.5, without changing their recency.
+        var accounts = LoadAccounts();
+        using var transaction = connection.BeginTransaction();
+        RememberContacts(connection, transaction, "email", accounts.SelectMany(a => a.Emails), seedOnly: true);
+        RememberContacts(connection, transaction, "phone", accounts.SelectMany(a => a.Phones), seedOnly: true);
+        transaction.Commit();
     }
 
     private static void EnsureColumn(SqliteConnection connection, string table, string column, string type)

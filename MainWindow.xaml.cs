@@ -445,6 +445,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _modelRefreshCancellation.Cancel();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
         base.OnClosed(e);
@@ -572,7 +573,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            var data = RecordDialogs.ShowAccountGroupDialog(this, null);
+            var data = RecordDialogs.ShowAccountGroupDialog(this, null, _repository.LoadContactHistory());
             if (data is null)
                 return;
 
@@ -626,7 +627,7 @@ public partial class MainWindow : Window
             return;
 
         var fullGroup = ResolveFullAccountGroup(group);
-        var data = RecordDialogs.ShowAccountGroupDialog(this, fullGroup);
+        var data = RecordDialogs.ShowAccountGroupDialog(this, fullGroup, _repository.LoadContactHistory());
         if (data is null)
             return;
 

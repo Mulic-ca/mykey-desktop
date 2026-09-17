@@ -530,7 +530,7 @@
                                                 <Button Style="{StaticResource IconButton}" Tag="{Binding}" Click="EditApiButton_Click" ToolTip="编辑">
                                                     <Path Data="{StaticResource EditIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="16" Height="16" Stretch="Uniform"/>
                                                 </Button>
-                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" Click="CopyApiBundleButton_Click" ToolTip="复制全部信息" Margin="2,0,0,0">
+                                                <Button Style="{StaticResource IconButton}" Tag="{Binding}" Click="CopyApiBundleButton_Click" ToolTip="复制默认 API 配置" Margin="2,0,0,0">
                                                     <Grid Width="18" Height="18">
                                                         <Path Data="{StaticResource ClipboardIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="18" Height="18" Stretch="Uniform"/>
                                                         <TextBlock Text="ALL" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" FontSize="4.8" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2"/>
@@ -547,27 +547,48 @@
                                             <ItemsControl ItemsSource="{Binding DisplayAltUrls}" ItemTemplate="{StaticResource AltUrlTemplate}" Margin="0,4,0,0"/>
                                         </StackPanel>
 
-                                        <Grid Grid.Row="2" Margin="0,12,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="74"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="API Key" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding ApiKey}" Foreground="{DynamicResource Ink}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                            <Button Grid.Column="2" Style="{StaticResource SmallCopyButton}" Content="复制" Tag="{Binding ApiKey}" Click="CopyTextButton_Click" Margin="8,0,0,0"/>
-                                        </Grid>
-
-                                        <StackPanel Grid.Row="3" Margin="0,12,0,0" Visibility="{Binding ModelSectionVisibility}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="模型" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
-                                                <Border Background="{DynamicResource Subtle}" CornerRadius="4" Padding="8,0" Height="26" Margin="8,0,0,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding ModelCountLabel}" Foreground="{DynamicResource Ink}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ContentControl Content="{Binding DisplayDefaultModel}" ContentTemplate="{StaticResource InlineModelTagTemplate}" Margin="8,0,0,0" Height="26" VerticalAlignment="Center"/>
-                                                <Button Style="{StaticResource ModelMoreButton}" Content="查看全部模型" Tag="{Binding}" Click="ShowAllModelsButton_Click" Height="26" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                            </StackPanel>
+                                        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                                            <TextBlock Text="API Key" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium"/>
+                                            <ItemsControl ItemsSource="{Binding DisplayKeys}" Margin="0,4,0,0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,0,0,1">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="42"/>
+                                                                <ColumnDefinition Width="112"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Background="{DynamicResource Primary}" CornerRadius="3" Padding="5,1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsDefault}" Value="False">
+                                                                                <Setter Property="Visibility" Value="Hidden"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="默认" Foreground="{DynamicResource OnPrimary}" FontSize="11"/>
+                                                            </Border>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Label}" Foreground="{DynamicResource Muted}" FontSize="13" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding Value}" Foreground="{DynamicResource Ink}" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            <Button Grid.Column="3" Style="{StaticResource SmallCopyButton}" Content="复制" Tag="{Binding Value}" Click="CopyTextButton_Click" MinHeight="20" MinWidth="24" Padding="2,0" Margin="6,0,0,0" ToolTip="复制此 Key"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                         </StackPanel>
+
+                                        <WrapPanel Grid.Row="3" Margin="0,12,0,0">
+                                            <TextBlock Text="模型" Foreground="{DynamicResource Muted}" FontSize="13.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            <Border Background="{DynamicResource Subtle}" CornerRadius="4" Padding="8,0" Height="26" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding ModelCountLabel}" Foreground="{DynamicResource Ink}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ContentControl Content="{Binding DisplayDefaultModel}" ContentTemplate="{StaticResource InlineModelTagTemplate}" Margin="8,0,0,0" Height="26" MaxWidth="240" VerticalAlignment="Center" Visibility="{Binding ModelSectionVisibility}"/>
+                                            <Button Style="{StaticResource ModelMoreButton}" Content="查看全部模型" Tag="{Binding}" Click="ShowAllModelsButton_Click" Height="26" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            <Button Style="{StaticResource ModelMoreButton}" Content="刷新模型" Tag="{Binding}" Click="RefreshModelsButton_Click" Height="26" Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="使用默认地址和默认 Key 刷新模型"/>
+                                        </WrapPanel>
 
                                         <StackPanel Grid.Row="4" Margin="0,6,0,0"/>
                                     </Grid>

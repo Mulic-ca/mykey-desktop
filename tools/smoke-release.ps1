@@ -47,7 +47,7 @@ try {
 $iscc = Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'
 & $iscc /Q /DTestInstall (Join-Path $root 'installer\MYKEY.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Test installer compilation failed' }
-$setup = Join-Path $root 'dist\MYKEY-Setup-1.1.0-x64-test.exe'
+$setup = Join-Path $root 'dist\MYKEY-Setup-1.1.5-x64-test.exe'
 $install = Join-Path $run 'installed'
 $installData = Join-Path $install 'data'
 $null = New-Item -ItemType Directory -Path $installData -Force
