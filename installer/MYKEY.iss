@@ -1,9 +1,11 @@
 #define AppName "MYKEY"
-#define AppVersion "1.1.5"
+#define AppVersion "1.2.0"
 #define AppPublisher "MYKEY"
 #define AppExeName "MYKEY.exe"
 #define ProjectRoot SourcePath + "\.."
+#ifndef PublishDir
 #define PublishDir ProjectRoot + "\bin\Release\net8.0-windows\win-x64\publish"
+#endif
 
 [Setup]
 #ifdef TestInstall
@@ -15,8 +17,13 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
+#ifdef TestInstall
+DefaultDirName={localappdata}\Programs\MYKEY-QA
+DefaultGroupName=MYKEY QA
+#else
 DefaultDirName={localappdata}\Programs\{#AppName}
 DefaultGroupName={#AppName}
+#endif
 DisableProgramGroupPage=yes
 AllowNoIcons=yes
 PrivilegesRequired=lowest
@@ -36,7 +43,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=force
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=1.1.5.0
+VersionInfoVersion={#AppVersion}.0
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}
@@ -50,10 +57,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "{#PublishDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ProjectRoot}\Assets\Fonts\MiSans\MiSans字体知识产权许可协议.pdf"; DestDir: "{app}\licenses"; DestName: "MiSans-License.pdf"; Flags: ignoreversion
+Source: "{#ProjectRoot}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
 
 [Icons]
+#ifndef TestInstall
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+#endif
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

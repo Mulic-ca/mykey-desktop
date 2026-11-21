@@ -10,8 +10,7 @@ public partial class MainWindow
 {
     private readonly HashSet<string> _selectedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _expiryTimer = new() { Interval = TimeSpan.FromMinutes(1) };
-    private Point _dragStart;
-    private Button? _dragHandle;
+
     private Button _updateButton = null!;
     private TextBlock _updateStatus = null!;
     private bool _checkingUpdate;
@@ -70,6 +69,7 @@ public partial class MainWindow
     private void SetContentView()
     {
         TrashList.Visibility = Visibility.Collapsed;
+        TrashList.ItemsSource = null;
         OrganizeBar.Visibility = Visibility.Visible;
         AddButton.Visibility = Visibility.Visible;
         SetNavState(TrashNavButton, false);
@@ -82,6 +82,8 @@ public partial class MainWindow
         _activeView = "trash";
         PageTitleText.Text = "回收站";
         AddButton.Visibility = OrganizeBar.Visibility = ApiList.Visibility = AccountList.Visibility = Visibility.Collapsed;
+        ApiList.ItemsSource = null;
+        ClearAccountCards();
         TrashList.Visibility = Visibility.Visible;
         SetNavState(ApiNavButton, false);
         SetNavState(AccountNavButton, false);
@@ -128,39 +130,27 @@ public partial class MainWindow
     };
     private void SortSelector_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyFilter();
 
-    private void DragHandle_Down(object sender, MouseButtonEventArgs e)
-    {
-        _dragStart = e.GetPosition(this);
-        _dragHandle = sender as Button;
-    }
-
-    private void DragHandle_Move(object sender, MouseEventArgs e)
-    {
-        if (e.LeftButton != MouseButtonState.Pressed || sender is not Button handle || handle != _dragHandle) return;
-        var distance = e.GetPosition(this) - _dragStart;
-        if (Math.Abs(distance.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(distance.Y) < SystemParameters.MinimumVerticalDragDistance) return;
-        _dragHandle = null;
-        if (SortSelector.SelectedIndex != 0 || _selectedTags.Count > 0 || !string.IsNullOrWhiteSpace(SearchBox.Text))
-        {
-            ShowToast("请清除搜索和标签筛选，并选择自定义排序");
-            return;
-        }
-        DragDrop.DoDragDrop(handle, new DataObject("MYKEY.Card", handle.Tag), DragDropEffects.Move);
-    }
-
     private void Card_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = CanDrop(sender, e) ? DragDropEffects.Move : DragDropEffects.None;
+        var canDrop = CanDrop(sender, e);
+        e.Effects = canDrop ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
-        var y = e.GetPosition(CardScroll).Y;
-        if (y < 45) CardScroll.ScrollToVerticalOffset(CardScroll.VerticalOffset - 18);
-        else if (y > CardScroll.ActualHeight - 45) CardScroll.ScrollToVerticalOffset(CardScroll.VerticalOffset + 18);
+        var source = ReadDraggedCard(e.Data);
+        if (source is null) return;
+        if (sender is Border target)
+            TrackDropTarget(target, canDrop ? (MovesAfterTarget(source, target.DataContext) ? "After" : "Before") : "Blocked");
+        var scroll = CardScrollFor(_activeView == "api" ? ApiList : AccountList);
+        if (scroll is null) return;
+        _dragPreview?.Move(e.GetPosition(scroll), canDrop);
+        var y = e.GetPosition(scroll).Y;
+        if (y < 45) scroll.ScrollToVerticalOffset(scroll.VerticalOffset - 18);
+        else if (y > scroll.ActualHeight - 45) scroll.ScrollToVerticalOffset(scroll.VerticalOffset + 18);
     }
 
     private bool CanDrop(object sender, DragEventArgs e)
     {
         if (SortSelector.SelectedIndex != 0 || _selectedTags.Count > 0 || SearchBox.Text.Trim().Length > 0) return false;
-        var source = e.Data.GetData("MYKEY.Card");
+        var source = ReadDraggedCard(e.Data);
         var target = (sender as FrameworkElement)?.DataContext;
         return (source, target) switch
         {
@@ -173,8 +163,9 @@ public partial class MainWindow
     private void Card_Drop(object sender, DragEventArgs e)
     {
         e.Handled = true;
+        ClearDropTarget();
         if (!CanDrop(sender, e)) return;
-        var source = e.Data.GetData("MYKEY.Card");
+        var source = ReadDraggedCard(e.Data);
         var target = ((FrameworkElement)sender).DataContext;
         try
         {
@@ -195,6 +186,7 @@ public partial class MainWindow
                 _repository.SaveCardOrder(false, list.Select(a => (IReadOnlyList<int>)a.Accounts.Select(b => b.Id).ToArray()));
             }
             ReloadAfterChange("排序已保存");
+            AnimateDroppedCard(source);
         }
         catch (Exception ex) { ShowToast("排序保存失败：" + ex.Message); }
     }
@@ -214,7 +206,7 @@ public partial class MainWindow
         catch (Exception ex) { ShowToast("删除失败：" + ex.Message); }
     }
 
-    private async Task CheckForUpdatesAsync(bool interactive)
+    private async Task CheckForUpdatesAsync(bool interactive, Task<AppRelease?>? existingCheck = null)
     {
         if (_checkingUpdate) return;
         _checkingUpdate = true;
@@ -222,7 +214,7 @@ public partial class MainWindow
         _updateStatus.Text = "正在检查更新";
         try
         {
-            var release = await UpdateService.CheckAsync();
+            var release = await (existingCheck ?? UpdateService.CheckAsync());
             _updateStatus.Text = release is null ? "已是最新版本 · " + UpdateService.CurrentVersion.ToString(3) : "发现新版本 " + release.Version;
             if (release is not null)
             {

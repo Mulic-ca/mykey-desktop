@@ -7,19 +7,22 @@ namespace MyKey.Desktop;
 public sealed partial class MyKeyRepository
 {
     public string DatabasePath { get; }
+    private readonly string _databaseKey;
+
+    private MyKeyRepository(string path, string key) => (DatabasePath, _databaseKey) = (path, key);
 
     public MyKeyRepository(string? databasePath = null)
     {
         var dataDir = databasePath is null ? AppPaths.DataDirectory : Path.GetDirectoryName(Path.GetFullPath(databasePath))!;
         Directory.CreateDirectory(dataDir);
 
-        DatabasePath = databasePath ?? Path.Combine(dataDir, "mykey.db");
-        if (databasePath is null && !AppPaths.IsTestMode && !File.Exists(DatabasePath))
-        {
-            var source = FindExistingDatabase();
-            if (source is not null)
-                File.Copy(source, DatabasePath);
-        }
+        DatabasePath = Path.GetFullPath(databasePath ?? Path.Combine(dataDir, "mykey.db"));
+        var exists = File.Exists(DatabasePath);
+        var plaintext = exists && DatabaseCipher.IsPlaintext(DatabasePath);
+        _databaseKey = DatabaseCipher.LocalKey(DatabasePath, !exists || plaintext);
+        var legacy = plaintext ? DatabasePath : !exists && databasePath is null && !AppPaths.IsTestMode ? FindExistingDatabase() : null;
+        if (legacy is not null) MigratePlaintextDatabase(legacy, exists);
+        else if (exists) ValidateDatabase(DatabasePath, _databaseKey);
 
         BackupBeforeMigration();
         EnsureDatabase();
@@ -268,30 +271,30 @@ public sealed partial class MyKeyRepository
         transaction.Commit();
     }
 
-    public void ExportDatabase(string destinationPath)
+    public void ExportDatabase(string destinationPath) => ExportEncryptedCopy(destinationPath, _databaseKey);
+
+    public void ExportDatabase(string destinationPath, string password)
+    {
+        DatabaseCipher.CheckPassword(password);
+        ExportEncryptedCopy(destinationPath, password);
+    }
+
+    private void ExportEncryptedCopy(string destinationPath, string key)
     {
         var destination = Path.GetFullPath(destinationPath);
-        if (string.Equals(destination, Path.GetFullPath(DatabasePath), StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("不能覆盖当前正在使用的数据库");
+        if (destination.Equals(DatabasePath, StringComparison.OrdinalIgnoreCase) ||
+            !Path.GetExtension(destination).Equals(".db", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("请选择不同于当前数据库的 .db 文件作为备份。");
 
         var destinationDirectory = Path.GetDirectoryName(destination);
         if (!string.IsNullOrWhiteSpace(destinationDirectory))
             Directory.CreateDirectory(destinationDirectory);
 
-        var temporaryPath = destination + ".tmp-" + Guid.NewGuid().ToString("N");
+        var temporaryPath = destination + ".tmp-" + Guid.NewGuid().ToString("N") + ".db";
         try
         {
-            using var source = OpenConnection();
-            using var target = new SqliteConnection(new SqliteConnectionStringBuilder
-            {
-                DataSource = temporaryPath,
-                Mode = SqliteOpenMode.ReadWriteCreate,
-                Pooling = false
-            }.ToString());
-            target.Open();
-            source.BackupDatabase(target);
-            target.Close();
-            source.Close();
+            DatabaseCipher.Copy(DatabasePath, _databaseKey, temporaryPath, key);
+            ValidateDatabase(temporaryPath, key);
 
             File.Move(temporaryPath, destination, true);
         }
@@ -302,13 +305,15 @@ public sealed partial class MyKeyRepository
         }
     }
 
-    public string ImportDatabase(string sourcePath)
+    public string ImportDatabase(string sourcePath) => ImportDatabase(sourcePath, null);
+
+    public string ImportDatabase(string sourcePath, string? password)
     {
         var source = Path.GetFullPath(sourcePath);
         if (string.Equals(source, Path.GetFullPath(DatabasePath), StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("所选文件就是当前数据库");
 
-        ValidateDatabase(source);
+        var key = DatabaseCipher.IsPlaintext(source) ? null : password ?? _databaseKey;
 
         var dataDirectory = Path.GetDirectoryName(DatabasePath)
             ?? throw new InvalidOperationException("无法确定数据库目录");
@@ -317,32 +322,11 @@ public sealed partial class MyKeyRepository
         Directory.CreateDirectory(backupDirectory);
         var backupPath = GetUniqueBackupPath(backupDirectory);
 
-        using (var input = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = source, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString()))
-        using (var staging = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = stagingPath, Pooling = false }.ToString()))
-        {
-            input.Open();
-            staging.Open();
-            input.BackupDatabase(staging);
-        }
         try
         {
-            ValidateDatabase(stagingPath);
-            SqliteConnection.ClearAllPools();
-            File.Replace(stagingPath, DatabasePath, backupPath, true);
-
-            try
-            {
-                EnsureDatabase();
-                _ = LoadApiKeys();
-                _ = LoadAccounts();
-            }
-            catch
-            {
-                SqliteConnection.ClearAllPools();
-                File.Copy(backupPath, DatabasePath, true);
-                EnsureDatabase();
-                throw;
-            }
+            PrepareImportedCopy(source, key, stagingPath);
+            DatabaseCipher.PrepareReplacement(DatabasePath, _databaseKey);
+            File.Replace(stagingPath, DatabasePath, backupPath);
         }
         finally
         {
@@ -353,35 +337,29 @@ public sealed partial class MyKeyRepository
         return backupPath;
     }
 
-    private SqliteConnection OpenConnection()
-    {
-        var connection = new SqliteConnection($"Data Source={DatabasePath}");
-        connection.Open();
-        return connection;
-    }
+    private SqliteConnection OpenConnection() => DatabaseCipher.Open(DatabasePath, _databaseKey, SqliteOpenMode.ReadWriteCreate, pooling: true);
 
-    private static void ValidateDatabase(string databasePath)
+    private static void ValidateDatabase(string databasePath, string? key)
     {
         if (!File.Exists(databasePath))
             throw new FileNotFoundException("数据库文件不存在", databasePath);
 
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        try
         {
-            DataSource = databasePath,
-            Mode = SqliteOpenMode.ReadOnly,
-            Pooling = false
-        }.ToString());
-        connection.Open();
-
-        using (var integrity = connection.CreateCommand())
-        {
+            using var connection = DatabaseCipher.Open(databasePath, key, SqliteOpenMode.ReadOnly);
+            using var integrity = connection.CreateCommand();
             integrity.CommandText = "PRAGMA quick_check";
-            if (!string.Equals(integrity.ExecuteScalar()?.ToString(), "ok", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(Convert.ToString(integrity.ExecuteScalar()), "ok", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("数据库完整性检查未通过");
+            // MYKEY backups contain only ordinary tables. Do not import executable schema objects.
+            integrity.CommandText = "SELECT count(*) FROM sqlite_schema WHERE type IN ('trigger','view') OR (type='table' AND upper(ltrim(sql)) LIKE 'CREATE VIRTUAL TABLE%')";
+            if (Convert.ToInt32(integrity.ExecuteScalar()) != 0)
+                throw new InvalidDataException("数据库包含 MYKEY 不支持的表结构，未执行导入。");
+            ValidateTable(connection, "api_keys", ["id", "name", "website", "base_url", "api_key", "models", "default_model"]);
+            ValidateTable(connection, "accounts", ["id", "remark", "name", "website", "password", "emails"]);
         }
-
-        ValidateTable(connection, "api_keys", ["id", "name", "website", "base_url", "api_key", "models", "default_model"]);
-        ValidateTable(connection, "accounts", ["id", "remark", "name", "website", "password", "emails"]);
+        catch (SqliteException ex) when (ex.SqliteErrorCode is 11 or 26)
+        { throw new InvalidDataException("无法解锁数据库：密钥或备份密码不正确，或者文件已损坏。", ex); }
     }
 
     private static void ValidateTable(SqliteConnection connection, string tableName, IReadOnlyList<string> requiredColumns)

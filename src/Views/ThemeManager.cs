@@ -48,6 +48,14 @@ public static class ThemeManager
             else
                 Application.Current.Resources[key] = new SolidColorBrush(color);
         }
+        var panel = ((SolidColorBrush)Brush("Panel")).Color;
+        var accent = ((SolidColorBrush)Brush("Accent")).Color;
+        Color Mix(double opacity) => Color.FromRgb(
+            (byte)(panel.R + (accent.R - panel.R) * opacity),
+            (byte)(panel.G + (accent.G - panel.G) * opacity),
+            (byte)(panel.B + (accent.B - panel.B) * opacity));
+        Application.Current.Resources["PinnedCardSurface"] = new SolidColorBrush(Mix(dark ? .10 : .05));
+        Application.Current.Resources["PinnedCardBorder"] = new SolidColorBrush(Mix(dark ? .38 : .32));
     }
 
     public static Brush Legacy(byte r, byte g, byte b)

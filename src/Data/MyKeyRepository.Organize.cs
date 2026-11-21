@@ -17,9 +17,33 @@ public sealed partial class MyKeyRepository
     public void PurgeExpired(DateTimeOffset? now = null)
     {
         using var connection = OpenConnection();
+        PurgeExpired(connection, now ?? DateTimeOffset.UtcNow);
+    }
+
+    // The cold-tray timer is not a startup/migration path: only touch an existing compatible file.
+    internal static void PurgeExistingDatabaseFromTray()
+    {
+        var path = System.IO.Path.Combine(AppPaths.DataDirectory, "mykey.db");
+        if (!System.IO.File.Exists(path)) return;
+        if (DatabaseCipher.IsPlaintext(path)) return;
+        using var connection = DatabaseCipher.Open(path, DatabaseCipher.LocalKey(path, false), SqliteOpenMode.ReadWrite, timeout: 3);
+        using var columns = connection.CreateCommand();
+        columns.CommandText = """
+            SELECT (SELECT count(*) FROM pragma_table_info('api_keys') WHERE name = 'deleted_at')
+                 + (SELECT count(*) FROM pragma_table_info('accounts') WHERE name = 'deleted_at');
+            """;
+        if (Convert.ToInt32(columns.ExecuteScalar()) != 2) return;
+        using var transaction = connection.BeginTransaction();
+        PurgeExpired(connection, DateTimeOffset.UtcNow, transaction);
+        transaction.Commit();
+    }
+
+    private static void PurgeExpired(SqliteConnection connection, DateTimeOffset now, SqliteTransaction? transaction = null)
+    {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "DELETE FROM api_keys WHERE deleted_at <= $cutoff; DELETE FROM accounts WHERE deleted_at <= $cutoff;";
-        command.Parameters.AddWithValue("$cutoff", (now ?? DateTimeOffset.UtcNow).AddDays(-30).ToUnixTimeSeconds());
+        command.Parameters.AddWithValue("$cutoff", now.AddDays(-30).ToUnixTimeSeconds());
         command.ExecuteNonQuery();
     }
 

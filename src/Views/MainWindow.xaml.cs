@@ -6,8 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
-using Forms = System.Windows.Forms;
-using Drawing = System.Drawing;
+
 
 namespace MyKey.Desktop;
 
@@ -23,30 +22,25 @@ public partial class MainWindow : Window
     private IReadOnlyList<AccountGroupView> _accountGroups = [];
     private readonly DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(160) };
-    private readonly bool _trayLaunch = Environment.GetCommandLineArgs().Any(arg =>
-        string.Equals(arg, "--tray", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(arg, "--silent", StringComparison.OrdinalIgnoreCase));
-    private readonly Forms.NotifyIcon _trayIcon = new();
-    private AppSettings _settings = new();
+    private readonly AppSettings _settings;
+    private Task<AppRelease?>? _startupUpdateCheck;
+    private IReadOnlyList<AccountGroupView> _visibleAccountGroups = [];
+    private int _accountColumns = 1;
+    private const double AccountCardStride = 455 + 16; // Card width plus right margin in MainWindow.xaml.
     private string _activeView = "api";
     private bool _updatingStartupToggle;
     private bool _updatingCloseToTrayToggle;
     private bool _forceExit;
 
-    public MainWindow()
-    {
-        InitializeComponent();
-        _settings = _settingsStore.Load();
-        InitializeOrganization();
-        InitializeTrayIcon();
-        if (_trayLaunch)
-        {
-            WindowState = WindowState.Minimized;
-            ShowActivated = false;
-            ShowInTaskbar = false;
-        }
+    public MainWindow() : this(new AppSettingsStore().Load(), null) { }
 
+    internal MainWindow(AppSettings settings, Task<AppRelease?>? startupUpdateCheck)
+    {
+        _settings = settings;
         _repository = new MyKeyRepository();
+        _startupUpdateCheck = startupUpdateCheck;
+        InitializeComponent();
+        InitializeOrganization();
         _toastTimer.Tick += ToastTimer_Tick;
         _searchTimer.Tick += SearchTimer_Tick;
         Loaded += MainWindow_Loaded;
@@ -54,12 +48,12 @@ public partial class MainWindow : Window
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        Loaded -= MainWindow_Loaded;
         LoadData();
         ShowApiView();
-        if (_trayLaunch)
-            HideToTray();
         if (_settings.CheckUpdatesOnStartup && !AppPaths.IsTestMode)
-            _ = CheckForUpdatesAsync(false);
+            _ = CheckForUpdatesAsync(false, _startupUpdateCheck);
+        _startupUpdateCheck = null;
         var updateResult = Path.Combine(AppPaths.DataDirectory, "update-result.json");
         if (File.Exists(updateResult))
         {
@@ -78,6 +72,8 @@ public partial class MainWindow : Window
         try
         {
             _apiKeys = _repository.LoadApiKeys();
+            if (_refreshingModels.Count > 0)
+                foreach (var api in _apiKeys) api.IsRefreshingModels = _refreshingModels.Contains(api.Id);
             _accounts = _repository.LoadAccounts();
             _accountGroups = AccountGrouping.BuildGroups(_accounts, _accountGroupActive);
             DatabasePathText.Text = _repository.DatabasePath;
@@ -127,7 +123,7 @@ public partial class MainWindow : Window
     {
         var dialog = new SaveFileDialog
         {
-            Title = "导出数据库",
+            Title = "导出加密备份",
             Filter = "MYKEY 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
             DefaultExt = ".db",
             AddExtension = true,
@@ -140,8 +136,10 @@ public partial class MainWindow : Window
 
         try
         {
-            _repository.ExportDatabase(dialog.FileName);
-            ShowToast("数据库已导出");
+            var password = RecordDialogs.RequestBackupPassword(this, exporting: true);
+            if (password is null) return;
+            _repository.ExportDatabase(dialog.FileName, password);
+            ShowToast("加密备份已导出");
         }
         catch (Exception ex)
         {
@@ -174,7 +172,13 @@ public partial class MainWindow : Window
 
         try
         {
-            _repository.ImportDatabase(dialog.FileName);
+            string? password = null;
+            if (!DatabaseCipher.IsPlaintext(dialog.FileName))
+            {
+                password = RecordDialogs.RequestBackupPassword(this, exporting: false);
+                if (password is null) return;
+            }
+            _repository.ImportDatabase(dialog.FileName, string.IsNullOrEmpty(password) ? null : password);
             LoadData();
             ApplyFilter();
             ShowToast("数据库已导入，原数据库已自动备份");
@@ -222,6 +226,7 @@ public partial class MainWindow : Window
         AddButton.Content = "新增 API";
         ApiList.Visibility = Visibility.Visible;
         AccountList.Visibility = Visibility.Collapsed;
+        ClearAccountCards();
         SetNavState(ApiNavButton, true);
         SetNavState(AccountNavButton, false);
         ApplyFilter();
@@ -234,6 +239,7 @@ public partial class MainWindow : Window
         PageTitleText.Text = "账号管理";
         AddButton.Content = "新增账号组";
         ApiList.Visibility = Visibility.Collapsed;
+        ApiList.ItemsSource = null;
         AccountList.Visibility = Visibility.Visible;
         SetNavState(ApiNavButton, false);
         SetNavState(AccountNavButton, true);
@@ -263,9 +269,30 @@ public partial class MainWindow : Window
         else
         {
             var filtered = FilterAccountGroups(SortGroups(_accountGroups.Where(item => TagsMatch(item.Tags))), keyword);
-            AccountList.ItemsSource = filtered;
+            _visibleAccountGroups = filtered;
+            SetAccountRows();
             EmptyStateText.Visibility = filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
+    }
+
+    private static ScrollViewer? CardScrollFor(ItemsControl list) =>
+        list.Template?.FindName("PART_CardScroll", list) as ScrollViewer;
+
+    private void AccountList_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, CardScrollFor(AccountList)) || e.ViewportWidthChange == 0 || e.ViewportWidth <= 0) return;
+        int columns = Math.Max(1, (int)(e.ViewportWidth / AccountCardStride));
+        if (columns == _accountColumns) return;
+        _accountColumns = columns;
+        SetAccountRows();
+    }
+
+    private void SetAccountRows() => AccountList.ItemsSource = _visibleAccountGroups.Chunk(_accountColumns).ToArray();
+
+    private void ClearAccountCards()
+    {
+        _visibleAccountGroups = [];
+        AccountList.ItemsSource = null;
     }
 
     private static List<T> Filter<T>(IEnumerable<T> source, string keyword, Func<T, string> textSelector)
@@ -382,33 +409,6 @@ public partial class MainWindow : Window
             ?? Path.Combine(AppContext.BaseDirectory, "MYKEY.exe");
     }
 
-    private void InitializeTrayIcon()
-    {
-        _trayIcon.Icon = LoadTrayIcon();
-        _trayIcon.Text = "MYKEY";
-        _trayIcon.Visible = true;
-        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ShowWindowFromTray);
-
-        var showItem = new Forms.ToolStripMenuItem("显示程序窗口");
-        showItem.Click += (_, _) => Dispatcher.Invoke(ShowWindowFromTray);
-
-        var exitItem = new Forms.ToolStripMenuItem("退出程序");
-        exitItem.Click += (_, _) => Dispatcher.Invoke(ExitApplication);
-
-        _trayIcon.ContextMenuStrip = new Forms.ContextMenuStrip();
-        _trayIcon.ContextMenuStrip.Items.Add(showItem);
-        _trayIcon.ContextMenuStrip.Items.Add(exitItem);
-    }
-
-    private static Drawing.Icon LoadTrayIcon()
-    {
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", "mykey-key.ico");
-        if (File.Exists(iconPath))
-            return new Drawing.Icon(iconPath);
-
-        return Drawing.Icon.ExtractAssociatedIcon(GetExecutablePath()) ?? System.Drawing.SystemIcons.Application;
-    }
-
     internal void ShowWindowFromTray()
     {
         ShowInTaskbar = true;
@@ -424,10 +424,9 @@ public partial class MainWindow : Window
         ShowInTaskbar = false;
     }
 
-    private void ExitApplication()
+    internal void ExitApplication()
     {
         _forceExit = true;
-        _trayIcon.Visible = false;
         Close();
     }
 
@@ -445,9 +444,9 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _searchTimer.Stop();
+        _toastTimer.Stop();
         _modelRefreshCancellation.Cancel();
-        _trayIcon.Visible = false;
-        _trayIcon.Dispose();
         base.OnClosed(e);
     }
 
@@ -466,12 +465,9 @@ public partial class MainWindow : Window
             .FirstOrDefault(item => item.Id == tab.AccountId)?.Index ?? 0;
         _accountGroupActive[tab.GroupKey] = fullIndex;
         group.ActiveIndex = fullIndex;
-        if (AccountList.ItemsSource is IEnumerable<AccountGroupView> visibleGroups)
-        {
-            var visible = visibleGroups.FirstOrDefault(item => item.Key == tab.GroupKey);
-            if (visible is not null && !ReferenceEquals(visible, group))
-                visible.ActiveIndex = Array.FindIndex(visible.Accounts.ToArray(), account => account.Id == tab.AccountId);
-        }
+        var visible = _visibleAccountGroups.FirstOrDefault(item => item.Key == tab.GroupKey);
+        if (visible is not null && !ReferenceEquals(visible, group))
+            visible.ActiveIndex = Array.FindIndex(visible.Accounts.ToArray(), account => account.Id == tab.AccountId);
     }
 
     private void OpenWebsiteLinkButton_Click(object sender, RoutedEventArgs e)

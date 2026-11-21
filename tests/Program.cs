@@ -29,8 +29,20 @@ internal static partial class Program
     {
         try
         {
-            if (!AppPaths.IsTestMode) throw new Exception("--test-mode and --data-dir required");
-            Directory.CreateDirectory(AppPaths.DataDirectory);
+            int dataArg = Array.IndexOf(args, "--data-dir");
+            if (!AppPaths.IsTestMode || dataArg < 0 || dataArg + 1 >= args.Length || args[dataArg + 1].StartsWith("--", StringComparison.Ordinal))
+                throw new Exception("--test-mode and --data-dir required");
+            var testRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Artifacts"));
+            if (!Path.GetRelativePath(testRoot, AppPaths.DataDirectory).StartsWith("..", StringComparison.Ordinal) &&
+                !Path.GetRelativePath(testRoot, AppPaths.DataDirectory).Equals(".", StringComparison.Ordinal))
+                Directory.CreateDirectory(AppPaths.DataDirectory);
+            else throw new Exception("Use a dedicated test data directory under project Artifacts");
+            if (args.Contains("--maintenance-fixture"))
+            {
+                RunMaintenanceFixture();
+                return 0;
+            }
+            EncryptionTests();
             RepositoryTests();
             DetailsRepositoryTests();
             ModelDetectionTests().GetAwaiter().GetResult();
@@ -113,9 +125,8 @@ internal static partial class Program
         Check(imported.LoadTrash().Count == 1 && imported.LoadAccounts().Count == 3, "export import includes recycle bin and account data");
         imported.DeleteTrash(imported.LoadTrash().Single());
         Check(imported.LoadTrash().Count == 0, "permanent delete");
-        using (var wal = new SqliteConnection("Data Source=" + export))
+        using (var wal = MyKeyRepository.OpenLocalForTests(export))
         {
-            wal.Open();
             using var command = wal.CreateCommand();
             command.CommandText = "PRAGMA journal_mode=WAL; INSERT INTO api_keys(name,base_url,api_key) VALUES ('WAL fixture','https://example.com','fixture')";
             command.ExecuteNonQuery();
@@ -167,6 +178,8 @@ internal static partial class Program
     {
         var app = new App();
         app.InitializeComponent();
+        // The console runner raises Click directly, outside the normal WPF message loop.
+        SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
         ThemeManager.Apply("light");
         var repo = new MyKeyRepository();
         foreach (var (name,tags) in new[] { ("火山引擎", new[] { "开发", "常用" }), ("示例 API", new[] { "工作" }) })
@@ -194,7 +207,7 @@ internal static partial class Program
         Pump();
         var list = (ItemsControl)window.FindName("AccountList");
         var source = list.ItemsSource;
-        var groups = source.Cast<AccountGroupView>().ToArray();
+        var groups = AccountCards(list).ToArray();
         var firstContainer = list.ItemContainerGenerator.ContainerFromIndex(0);
         var tab = FindVisual<Button>(firstContainer).First(b => b.Tag is AccountTabView t && t.Index == 1);
         var timer = Stopwatch.StartNew();
@@ -205,12 +218,13 @@ internal static partial class Program
         Check(groups[0].ActiveIndex == 1, "account switching selects intended account");
         Console.WriteLine($"ACCOUNT_SWITCH_MS={timer.Elapsed.TotalMilliseconds:F1}");
         search.Text = "demo-2"; WaitUi(220);
-        Check(list.Items.Cast<AccountGroupView>().All(g => g.Accounts.Count == 1 && g.ActiveAccount.Name == "demo-2"), "account search hides nonmatching account tabs");
+        Check(AccountCards(list).Any() && AccountCards(list).All(g => g.Accounts.Count == 1 && g.ActiveAccount.Name == "demo-2"), "account search hides nonmatching account tabs");
         search.Clear(); WaitUi(220);
         var snapshots = Path.Combine(AppPaths.DataDirectory,"screenshots"); Directory.CreateDirectory(snapshots);
+        TestPinnedCards(window, repo, snapshots);
         DetailsUiTests(window, repo, snapshots);
         ((Button)window.FindName("ApiNavButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        ((ScrollViewer)window.FindName("CardScroll")).ScrollToTop();
+        FindCardScroll(apiList).ScrollToTop();
         foreach (var theme in ThemeManager.Choices)
         {
             ThemeManager.Apply(theme.Id); Pump(); Snapshot(window,Path.Combine(snapshots,theme.Id+".png"));
@@ -242,6 +256,7 @@ internal static partial class Program
         window.Width = 1020; window.Height = 680; Pump(); Snapshot(window,Path.Combine(snapshots,"compact-dark.png"));
         var label = FindVisual<TextBlock>(window).First(t => t.Text == "查看全部模型");
         Check(label.ActualWidth > 20 && window.ActualWidth == 1020, "compact window renders model action");
+        CardViewportTests(window, repo);
         window.Close();
     }
     private static void Pump() { var frame = new DispatcherFrame(); Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => frame.Continue = false); Dispatcher.PushFrame(frame); }

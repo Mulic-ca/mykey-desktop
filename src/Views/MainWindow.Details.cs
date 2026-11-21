@@ -10,9 +10,8 @@ public partial class MainWindow
 
     private async void RefreshModelsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: ApiKeyRecord record } button || !_refreshingModels.Add(record.Id)) return;
-        button.IsEnabled = false;
-        button.Content = "刷新中…";
+        if (sender is not Button { Tag: ApiKeyRecord record } || !_refreshingModels.Add(record.Id)) return;
+        record.IsRefreshingModels = true;
         try
         {
             List<string> models;
@@ -41,8 +40,9 @@ public partial class MainWindow
         finally
         {
             _refreshingModels.Remove(record.Id);
-            button.IsEnabled = true;
-            button.Content = "刷新模型";
+            record.IsRefreshingModels = false;
+            if (_apiKeys.FirstOrDefault(item => item.Id == record.Id) is { } current)
+                current.IsRefreshingModels = false;
         }
     }
 }

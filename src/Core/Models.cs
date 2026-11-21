@@ -5,9 +5,22 @@ using System.Windows.Media;
 
 namespace MyKey.Desktop;
 
-public sealed class ApiKeyRecord
+public sealed class ApiKeyRecord : INotifyPropertyChanged
 {
     private string? _searchText;
+    private bool _isRefreshingModels;
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public bool IsRefreshingModels
+    {
+        get => _isRefreshingModels;
+        internal set
+        {
+            if (_isRefreshingModels == value) return;
+            _isRefreshingModels = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRefreshingModels)));
+        }
+    }
 
     public int Id { get; init; }
     public string Name { get; init; } = "";

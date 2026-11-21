@@ -17,9 +17,8 @@ internal static partial class Program
         var repo = new MyKeyRepository(path);
         repo.SaveApiKey(Api("旧平台"));
         repo.SaveAccountGroup(Group("旧账号", 1));
-        using (var connection = new SqliteConnection("Data Source=" + path))
+        using (var connection = MyKeyRepository.OpenLocalForTests(path))
         {
-            connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = "ALTER TABLE api_keys DROP COLUMN api_secrets; DROP TABLE contact_history;";
             command.ExecuteNonQuery();
@@ -27,7 +26,7 @@ internal static partial class Program
         repo = new MyKeyRepository(path);
         Check(repo.LoadApiKeys().Single().DisplayKeys.Single().Value == "test-key-not-real", "1.1.0 single key migrates without loss");
         var backups = Directory.GetFiles(Path.Combine(AppPaths.DataDirectory, "backups"), "mykey-before-1.1.5-*.db");
-        Check(backups.Length >= 2, "old database backed up before 1.1.5 migration");
+        Check(backups.Length == 1 && !CanReadWithoutKey(backups[0]), "old schema backed up with encryption before migration");
         Check(repo.LoadContactHistory().Emails.SequenceEqual(new[] { "demo@example.com" }), "existing saved contacts seed history during migration");
         var fixture = Api("多 Key 平台");
         fixture.Keys = [new() { Value = "first-key", Remark = "日常" }, new() { Value = "second-key", Remark = "六个字的备注", IsDefault = true }];
@@ -201,11 +200,13 @@ internal static partial class Program
         socket.Start(); var port = ((IPEndPoint)socket.LocalEndpoint).Port; socket.Stop();
         using var listener = new HttpListener();
         listener.Prefixes.Add($"http://127.0.0.1:{port}/"); listener.Start();
+        var finishFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var server = Task.Run(async () =>
         {
             foreach (var status in new[] { 200, 401 })
             {
                 var context = await listener.GetContextAsync();
+                if (status == 200) await finishFirst.Task.WaitAsync(TimeSpan.FromSeconds(10));
                 context.Response.StatusCode = status;
                 var bytes = System.Text.Encoding.UTF8.GetBytes(status == 200 ? "{\"data\":[{\"id\":\"refreshed-fixture\"}]}" : "Invalid API key fixture-secret");
                 context.Response.ContentLength64 = bytes.Length;
@@ -224,6 +225,17 @@ internal static partial class Program
         Check(button.IsVisible, "model refresh available on a card with no models");
         button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(!button.IsEnabled && Equals(button.Content, "刷新中…"), "refresh shows busy state and disables duplicate click");
+        try
+        {
+            var search = (TextBox)window.FindName("SearchBox");
+            search.Text = "hsyq"; WaitUi(250);
+            Check(FindVisual<Button>(window).Any(b => b.Tag is ApiKeyRecord a && a.Name == "火山引擎" && b.IsEnabled && Equals(b.Content, "刷新模型")),
+                "rebound card does not inherit another card's busy state");
+            search.Clear(); WaitUi(250);
+            Check(FindVisual<Button>(window).Any(b => b.Tag is ApiKeyRecord a && a.Name == fixture.Name && !b.IsEnabled && Equals(b.Content, "刷新中…")),
+                "pending refresh stays attached to its record after filtering away and back");
+        }
+        finally { finishFirst.TrySetResult(); }
         var deadline = DateTime.UtcNow.AddSeconds(8);
         while (!repo.LoadApiKeys().First(a => a.Name == fixture.Name).Models.Contains("refreshed-fixture") && DateTime.UtcNow < deadline) WaitUi(50);
         Pump();

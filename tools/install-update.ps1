@@ -1,4 +1,4 @@
-param([int]$ParentId, [string]$Installer, [string]$InstallDirectory)
+param([int]$ParentId, [string]$Installer, [string]$InstallDirectory, [switch]$TestMode)
 $ErrorActionPreference = 'Stop'
 $exe = Join-Path $InstallDirectory 'MYKEY.exe'
 $backup = Join-Path (Split-Path $Installer -Parent) 'MYKEY.previous.exe'
@@ -26,4 +26,8 @@ try {
 }
 $result | ConvertTo-Json | Set-Content -LiteralPath $status -Encoding UTF8
 $result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $Installer -Parent) 'update-result.json') -Encoding UTF8
-Start-Process -FilePath $exe -WorkingDirectory $InstallDirectory
+if ($TestMode) {
+    Start-Process -FilePath $exe -WorkingDirectory $InstallDirectory -ArgumentList ('--test-mode --data-dir "' + (Join-Path $InstallDirectory 'data') + '"')
+} else {
+    Start-Process -FilePath $exe -WorkingDirectory $InstallDirectory
+}
